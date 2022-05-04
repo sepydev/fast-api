@@ -1,5 +1,6 @@
 from fastapi import FastAPI, APIRouter, status
 
+
 app = FastAPI(
     title='Accounts API',
     openapi_url="/openapi.json",
