@@ -1,23 +1,36 @@
-from fastapi import FastAPI, APIRouter, status
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
+from accounts import api as accounts_api
+from database import create_db_and_tables  # noqa
 
 app = FastAPI(
-    title='Accounts API',
-    openapi_url="/openapi.json",
+    title='Modular app with SQLModel and Alembic ',
+    description='Created by Mohammad Rezazadeh',
+)
+origins = [
+    "http://localhost",
+    "http://localhost:8080",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-api_router = APIRouter()
+
+app.include_router(accounts_api.router)
 
 
-@api_router.get("/", status_code=status.HTTP_200_OK)
-def root() -> dict:
-    return {
-        "msg": "Hellow world"
-    }
+@app.get("/")
+async def root():
+    return {"message": "Hello Bigger Applications!"}
 
 
-app.include_router(api_router)
-if __name__ == "__main__":
+if __name__ == '__main__':
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8081, log_level="debug")
+    uvicorn.run(app="main:app", host='0.0.0.0', port=8080, reload=True)

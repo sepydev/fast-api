@@ -1,42 +1,33 @@
-from sqlalchemy.orm import Session
-
-from . import models, schemas
-
-
-def get_user(db: Session, user_id: int):
-    return db.query(models.User).filter(models.User.id == user_id).first()
+from sqlmodel import Session, select
+from accounts.models import User, UserCreate, UserOut
+from fastapi import HTTPException, status
 
 
-def get_user_by_email(db: Session, email: str):
-    return db.query(models.User).filter(models.User.email == email).first()
+def create_user(session: Session, user: UserCreate):
+    db_user = session.execute(select(User).where(User.email == user.email)).first()
+    if db_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already exists",
+        )
+    if user.password != user.confirm_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Passwords and confirm passwords are not matched",
+        )
+    db_user = User(email=user.email, hashed_password=user.password)
+    if not db_user.email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email is not valid",
+        )
 
-
-def get_users(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(models.User).offset(skip).limit(limit).all()
-
-
-def create_user(db: Session, user: schemas.UserCreate):
-    pass_hash = user.password
-    db_user = models.User(
-        email=user.email,
-        hashed_password=pass_hash,
-    )
-    db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
+    session.add(db_user)
+    session.commit()
+    session.refresh(db_user)
     return db_user
 
 
-def get_items(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(models.Item).offset(skip).limit(limit).all()
-
-
-def create_user_item(db: Session, item: schemas.ItemCreate, user_id: int):
-    db_item = models.Item(
-        **item.dict(),
-        owner_id=user_id,
-    )
-    db.add(db_item)
-    db.commit()
-    db.refresh(db_item)
-    return db_item
+def get_users(session: Session, offset: int = 0, limit: int = 100):
+    users = session.execute(select(User).offset(offset).limit(limit)).scalars().all()
+    return users
